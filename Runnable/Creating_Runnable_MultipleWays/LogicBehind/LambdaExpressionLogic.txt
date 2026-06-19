@@ -1,0 +1,63 @@
+public class LambdaExpression {
+    public static void main(String[] args) {
+        Runnable task=()->{
+            System.out.println(Thread.currentThread().getName()+" Started....");
+            System.out.println(Thread.currentThread().getName()+" Terminated");
+        };
+        Thread t1=new Thread(task);
+        Thread t2=new Thread(task);
+        t1.start();
+        t2.start();
+    }
+}
+
+                                    /************* Logic Behind **************/
+
+1. First it will converted to a synthetic method
+        Runnable task=()->{                                                                _
+            System.out.println(Thread.currentThread().getName()+" Started....");            |
+            System.out.println(Thread.currentThread().getName()+" Terminated");             |   ----
+        };                                                                                 -        |
+                                                                                                    |
+                                                                                                    |
+                                                                                                    |
+        // Synthetic methods are created by jvm                                            _        |
+        private static synthetic void lambda$main$0() {                                     |       |
+             System.out.println(Thread.currentThread().getName() + " Started....");         |-------
+             System.out.println(Thread.currentThread().getName() + " Terminated");          |
+        }                                                                                  -
+2. Now a class is created by jvm that is going to inherit Runnable class
+
+    class Sharedlambda$main$0 implements Runnable{
+
+        @Override
+        public void run() {
+
+                lambdaExpression.lambda$main$0();
+        }
+    }
+3. Now the whole program looks like this:
+
+
+    class Sharedlambda$main$0 implements Runnable{
+            @Override
+            public void run() {
+               lambdaExpression.lambda$main$0();
+            }
+    }
+    class LambdaExpression {
+        public static void main(String[] args) {
+           Sharedlambda$main$0 task=new Sharedlambda$main$0();
+           Thread t1=new Thread(task);
+           Thread t2=new Thread(task);
+           t1.start();
+           t2.start();
+
+        }
+        private static synthetic void lambda$main$0() {
+              System.out.println(Thread.currentThread().getName() + " Started....");
+              System.out.println(Thread.currentThread().getName() + " Terminated");
+        }
+    }
+
+
