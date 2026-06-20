@@ -1,4 +1,4 @@
-package Threads.Runnable.Shared_Variables;
+package Threads.Shared_Variables;
 class Task1 implements Runnable{
     int count=0;
     @Override

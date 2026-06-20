@@ -1,4 +1,4 @@
-package Threads.Runnable.Shared_Variables;
+package Threads.Shared_Variables;
 
 /******************************************************************
  STEP 1 : CREATE A CLASS TO HOLD SHARED DATA

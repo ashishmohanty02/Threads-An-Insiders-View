@@ -1,4 +1,4 @@
-package Threads.Runnable.Custom_Methods.Static_Methods;
+package Threads.Custom_Methods.Static_Methods;
 class Task1 implements Runnable{
     int n;
     Task1(){

@@ -1,4 +1,4 @@
-package Threads.ThreadClass.Creating_Thread_Multipleways;
+package Threads.Different_Initiation_Of_threads.ThreadClasses;
 
 public class LambdaExpression { // metaspace
     public static void main(String[] args) { // main activation record in stack is created

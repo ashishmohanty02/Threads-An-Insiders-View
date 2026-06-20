@@ -1,4 +1,4 @@
-package Threads.Runnable.Custom_Methods.NonStatic_Methods;
+package Threads.Custom_Methods.NonStatic_Methods;
 class Task implements Runnable{
     private NonStatic_Methods nonStaticMethods;
     int n;

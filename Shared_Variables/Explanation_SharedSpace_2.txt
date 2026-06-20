@@ -1,4 +1,4 @@
-package Threads.Runnable.Shared_Variables;
+package Threads.Shared_Variables;
 
 /**
  * ============================================================================
@@ -90,9 +90,9 @@ public class SharedSpaces_1 {
 
 1. The operation 'sharedVar.data++' looks like one single action.
    However, the JVM splits it into 3 microscopic steps under the hood:
-        - READ:   Goes to Heap address [2k], reads the current value of 'data' [INDEX].
-        - MODIFY: Brings that value to the thread's private stack frame, adds 1 [INDEX].
-        - WRITE:  Goes back to Heap address [2k], writes the new total over the old one [INDEX].
+        - READ:   Goes to Heap address [2k], reads the current value of 'data'.
+        - MODIFY: Brings that value to the thread's private stack frame, adds 1 .
+        - WRITE:  Goes back to Heap address [2k], writes the new total over the old one .
 
 2. When both threads run at full speed on different CPU cores, their timelines overlap.
    Let's trace a live collision when the 'data' field at address [2k] is currently at 42:
@@ -118,12 +118,12 @@ D. [WRITES 43 back to address 2k]                          |                    
                                               -> Overwrites 43 right on top of 43!
 
 3. The Breakdown of the Disaster:
-        - Two separate CPU workers executed the increment command (Thread-1 and Thread-2) [INDEX].
+        - Two separate CPU workers executed the increment command (Thread-1 and Thread-2).
         - Because Thread-2 executed its READ step (B) before Thread-1 could execute its WRITE step (D),
-          Thread-2 worked with old, stale data [INDEX].
-        - Both threads calculated "42 + 1 = 43" in their private stacks [INDEX].
-        - When Thread-2 saved its answer (F), it completely erased the update Thread-1 just made [INDEX].
+          Thread-2 worked with old, stale data .
+        - Both threads calculated "42 + 1 = 43" in their private stacks.
+        - When Thread-2 saved its answer (F), it completely erased the update Thread-1 just made.
 
-   Result: Two additions happened, but the value at address [2k] only went up by 1 [INDEX]!
+   Result: Two additions happened, but the value at address [2k] only went up by 1 !
    This microsecond collision happens millions of times over 10,000,000 loops, which is
-   why your final count drops way below 20,000,000 [INDEX].
+   why your final count drops way below 20,000,000.

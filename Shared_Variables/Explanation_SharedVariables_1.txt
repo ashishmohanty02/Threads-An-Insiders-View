@@ -1,4 +1,4 @@
-package Threads.Runnable.Shared_Variables;
+package Threads.Shared_Variables;
 
 class Task1 implements Runnable {
     // Shared variable sitting inside the Task1 object on the Heap [2k]
@@ -19,24 +19,24 @@ class Task1 implements Runnable {
 
 public class SharedVariables_1 {
     public static void main(String[] args) {
-        // 1. Allocate ONE task recipe object on the shared Heap (e.g., Address 2k) [INDEX]
+        // 1. Allocate ONE task recipe object on the shared Heap (e.g., Address 2k)
         Task1 task1 = new Task1();
 
-        // 2. Create 4 separate worker Thread objects on the Heap [INDEX]
-        // ALL FOUR threads are given the exact same pointer ('task1' at 2k) [INDEX]
+        // 2. Create 4 separate worker Thread objects on the Heap
+        // ALL FOUR threads are given the exact same pointer ('task1' at 2k)
         Thread t1 = new Thread(task1); // JVM Name: Thread-0 (Object at 10k)
         Thread t2 = new Thread(task1); // JVM Name: Thread-1 (Object at 9k)
         Thread t3 = new Thread(task1); // JVM Name: Thread-2 (Object at 8k)
         Thread t4 = new Thread(task1); // JVM Name: Thread-3 (Object at 7k)
 
-        // 3. Fire them up! .start() requests private memory stacks from the OS [INDEX]
+        // 3. Fire them up! .start() requests private memory stacks from the OS
         t4.start();
         t3.start();
         t1.start();
         t2.start();
 
         try {
-            // .join() forces the 'main' thread to pause until all workers finish [INDEX]
+            // .join() forces the 'main' thread to pause until all workers finish
             t1.join();
             t2.join();
             t3.join();
@@ -60,7 +60,7 @@ public class SharedVariables_1 {
                                        │
                                        ▼ (All 4 workers point to the same recipe)
                            ┌────────────────────────┐
-                           │ Task1 Object (At 2k)   │ ──► Contains 'count = 0' [INDEX]
+                           │ Task1 Object (At 2k)   │ ──► Contains 'count = 0'
                            └────────────────────────┘
 
 
@@ -68,9 +68,9 @@ public class SharedVariables_1 {
 
 1. The operation 'count = count + 1' looks like one single action.
    However, the JVM splits it into 3 microscopic steps under the hood:
-        - READ:   Goes to Heap address [2k], reads the current value of 'count' [INDEX].
-        - MODIFY: Brings that value to the thread's private stack frame, adds 1 [INDEX].
-        - WRITE:  Goes back to Heap address [2k], writes the new total over the old one [INDEX].
+        - READ:   Goes to Heap address [2k], reads the current value of 'count'.
+        - MODIFY: Brings that value to the thread's private stack frame, adds 1 .
+        - WRITE:  Goes back to Heap address [2k], writes the new total over the old one.
 
 2. When threads run at full speed on different CPU cores, their timelines overlap.
    Let's trace a live collision when the 'count' field at address [2k] is currently at 100:
@@ -78,15 +78,15 @@ public class SharedVariables_1 {
    Thread-0 (Working at Stack [10k])       Thread-1 (Working at Stack [9k])     Shared Heap Box [2k]
    ─────────────────────────────────       ────────────────────────────────     ────────────────────
 A. [READS value from address 2k]                           |                             100
-   -> Sees 100, puts 100 in Stack-10k                     |
+   -> Sees 100, puts 100 in Stack-10k                      |
                                                            |
 B.                 |                       [READS value from address 2k]                 100
-   │                                       -> Sees 100, puts 100 in Stack-9k
-   ▼                                                       │
+                   |                       -> Sees 100, puts 100 in Stack-9k
+                   ▼                                       │
 C. [MODIFIES value inside Stack]                           ▼                             100
    -> Changes local 100 to 101                             |
                                                            |
-D. [WRITES 101 back to address 2k]                          |                             101
+D. [WRITES 101 back to address 2k]                         |                             101
    -> Heap 'count' is now 101                              ▼
                                            E. [MODIFIES value inside Stack]              101
                                               -> Changes local 100 to 101
@@ -96,12 +96,12 @@ D. [WRITES 101 back to address 2k]                          |                   
                                               -> Overwrites 101 right on top of 101!
 
 3. The Breakdown of the Disaster:
-        - Two separate CPU workers executed the increment command (Thread-0 and Thread-1) [INDEX].
+        - Two separate CPU workers executed the increment command (Thread-0 and Thread-1) .
         - Because Thread-1 executed its READ step (B) before Thread-0 could execute its WRITE step (D),
-          Thread-1 worked with old, stale data [INDEX].
-        - Both threads calculated "100 + 1 = 101" in their private stacks [INDEX].
-        - When Thread-1 saved its answer (F), it completely erased the update Thread-0 just made [INDEX].
+          Thread-1 worked with old, stale data .
+        - Both threads calculated "100 + 1 = 101" in their private stacks.
+        - When Thread-1 saved its answer (F), it completely erased the update Thread-0 just made .
 
-   Result: Two additions happened, but the value at address [2k] only went up by 1 [INDEX]!
+   Result: Two additions happened, but the value at address [2k] only went up by 1 !
    This microsecond collision happens thousands of times over your loops, which is
-   why your final count drops way below the expected total [INDEX].
+   why your final count drops way below the expected total .

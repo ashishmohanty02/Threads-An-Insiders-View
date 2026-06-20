@@ -1,4 +1,4 @@
-package Threads.ThreadClass.Creating_Thread_Multipleways;
+package Threads.Different_Initiation_Of_threads.ThreadClasses;
 
 class ThreadTask1 extends Thread{ // going to created in metaspace
     int counter=0;

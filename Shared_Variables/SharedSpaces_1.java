@@ -1,4 +1,4 @@
-package Threads.Runnable.Shared_Variables;
+package Threads.Shared_Variables;
 
 class SharedVar{
     int data=0;

@@ -1,4 +1,4 @@
-package Threads.Runnable.Creating_Runnable_MultipleWays;
+package Threads.Different_Initiation_Of_threads.Runnable;
 
 class Task1 implements Runnable{
     @Override
