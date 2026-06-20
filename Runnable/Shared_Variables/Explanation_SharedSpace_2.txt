@@ -1,0 +1,129 @@
+package Threads.Runnable.Shared_Variables;
+
+/**
+ * ============================================================================
+ * 1. THE DATA BOX (SharedVar Class)
+ * ============================================================================
+ * This class simply holds our core integer variable. It sits inside the common,
+ * shared Heap memory space [2k].
+ */
+class SharedVar {
+    int data = 0; 
+}
+
+/**
+ * ============================================================================
+ * 2. THE WORK RECIPE (Task Class)
+ * ============================================================================
+ * This class implements Runnable . It acts as a wrapper that holds a pointer
+ * referencing our data box on the Heap [2k].
+ */
+class Task implements Runnable {
+    private SharedVar sharedVar;
+
+    // The constructor takes the Heap pointer address and stores it [2k]
+    Task(SharedVar sharedVar) {
+        this.sharedVar = sharedVar;
+    }
+
+    @Override
+    public void run() {
+        // High loop count forces the threads to run simultaneously over several milliseconds
+        for (int i = 0; i < 10000000; i++) { 
+            sharedVar.data++; 
+        }
+    }
+}
+
+/**
+ * ============================================================================
+ * 3. THE MAIN CONTROLLER (SharedSpaces_1 Class)
+ * ============================================================================
+ */
+public class SharedSpaces_1 {
+    public static void main(String[] args) {
+        // Allocate the shared data container on the Heap [2k]
+        SharedVar sharedVar = new SharedVar();
+        
+        // Pass the container pointer into our work task [3k]
+        Task task = new Task(sharedVar);
+        
+        // Create two separate worker threads pointing to the same task object [10k and 9k]
+        Thread t1 = new Thread(task);
+        Thread t2 = new Thread(task);
+
+        // Fire them up in parallel!
+        t1.start();
+        t2.start();
+
+        try {
+            // Force the main thread to wait until both workers finish completely
+            t1.join();
+            t2.join();
+        } catch (Exception e) {}
+
+        System.out.println("Expected Value: 20000000");
+        System.out.println("Actual Value:   " + sharedVar.data);
+    }
+}
+
+
+                                        HEAP MEMORY
+
+                     (At 10k)                                 (At 9k)
+             ┌────────────────────────┐              ┌────────────────────────┐
+             │  Thread 1 Object (t1)  │              │  Thread 2 Object (t2)  │
+             └───────────┬────────────┘              └───────────┬────────────┘
+                         │                                       │
+                         └───────────────────┬───────────────────┘
+                                             ▼ (Both look at the same Task wrapper)
+                                 ┌────────────────────────┐
+                                 │ Task Object (At 3k)  │
+                                 └───────────┬────────────┘
+                                             │
+                                             ▼ (Points to the ultimate data box)
+                                 ┌────────────────────────┐
+                                 │ SharedVar Object(2k) │ ──► Contains 'data = 0'
+                                 └────────────────────────┘
+
+/************* LOGIC BEHIND DATA CORRUPTION (THE RACE CONDITION) **************/
+
+1. The operation 'sharedVar.data++' looks like one single action.
+   However, the JVM splits it into 3 microscopic steps under the hood:
+        - READ:   Goes to Heap address [2k], reads the current value of 'data' [INDEX].
+        - MODIFY: Brings that value to the thread's private stack frame, adds 1 [INDEX].
+        - WRITE:  Goes back to Heap address [2k], writes the new total over the old one [INDEX].
+
+2. When both threads run at full speed on different CPU cores, their timelines overlap.
+   Let's trace a live collision when the 'data' field at address [2k] is currently at 42:
+
+   Thread-1 (Working at Stack [10k])       Thread-2 (Working at Stack [9k])     Shared Heap Box [2k]
+   ─────────────────────────────────       ────────────────────────────────     ────────────────────
+A. [READS value from address 2k]                           |                             42
+   -> Sees 42, puts 42 in Stack-10k                       |
+                                                           |
+B.                 |                       [READS value from address 2k]                 42
+   │                                       -> Sees 42, puts 42 in Stack-9k
+   ▼                                                       │
+C. [MODIFIES value inside Stack]                           ▼                             42
+   -> Changes local 42 to 43                               |
+                                                           |
+D. [WRITES 43 back to address 2k]                          |                             43
+   -> Heap is now 43                                       ▼
+                                           E. [MODIFIES value inside Stack]              43
+                                              -> Changes local 42 to 43
+                                                           │
+                                                           ▼
+                                           F. [WRITES 43 back to address 2k]             43 <--- CRASH!
+                                              -> Overwrites 43 right on top of 43!
+
+3. The Breakdown of the Disaster:
+        - Two separate CPU workers executed the increment command (Thread-1 and Thread-2) [INDEX].
+        - Because Thread-2 executed its READ step (B) before Thread-1 could execute its WRITE step (D),
+          Thread-2 worked with old, stale data [INDEX].
+        - Both threads calculated "42 + 1 = 43" in their private stacks [INDEX].
+        - When Thread-2 saved its answer (F), it completely erased the update Thread-1 just made [INDEX].
+
+   Result: Two additions happened, but the value at address [2k] only went up by 1 [INDEX]!
+   This microsecond collision happens millions of times over 10,000,000 loops, which is
+   why your final count drops way below 20,000,000 [INDEX].

@@ -1,0 +1,310 @@
+package Threads.Runnable.Shared_Variables;
+
+/******************************************************************
+ STEP 1 : CREATE A CLASS TO HOLD SHARED DATA
+ ******************************************************************/
+
+class SharedVar{
+
+    // This variable will be shared by multiple threads.
+    // Initially value is 0.
+
+    int data = 0;
+}
+
+/******************************************************************
+ STEP 2 : CREATE A TASK
+ ******************************************************************/
+
+class Task implements Runnable{
+
+    // Task stores a reference to SharedVar object.
+
+    private SharedVar sharedVar;
+
+    /**************************************************************
+     CONSTRUCTOR
+     **************************************************************/
+
+    Task(SharedVar sharedVar){
+
+        // Constructor receives SharedVar object reference.
+
+        // "this.sharedVar" -> instance variable of Task
+        // "sharedVar"      -> constructor parameter
+
+        this.sharedVar = sharedVar;
+
+        /*
+            After assignment:
+
+            Task
+              |
+              |
+              v
+
+            SharedVar
+               |
+               v
+
+             data=0
+        */
+    }
+
+    /**************************************************************
+     WORK TO BE PERFORMED BY THREAD
+     **************************************************************/
+
+    @Override
+    public void run() {
+
+        /*
+            Whenever a thread starts,
+            JVM automatically calls run().
+        */
+
+        for(int i=0;i<10000;i++){
+
+            // Increment shared variable
+
+            sharedVar.data++;
+        }
+    }
+
+    /**************************************************************
+     HELPER METHOD
+     **************************************************************/
+
+    public int getData(){
+
+        return sharedVar.data;
+    }
+}
+
+/******************************************************************
+ MAIN CLASS
+ ******************************************************************/
+
+public class SharedSpaces_1 {
+
+    public static void main(String[] args) {
+
+        /**********************************************************
+         STEP 3 : CREATE SHARED OBJECT
+         **********************************************************/
+
+        SharedVar sharedVar = new SharedVar();
+
+        /*
+            Memory:
+
+                 sharedVar
+                     |
+                     v
+
+                +---------+
+                | data=0  |
+                +---------+
+
+            Only ONE object is created.
+        */
+
+
+        /**********************************************************
+         STEP 4 : CREATE TASK OBJECT
+         **********************************************************/
+
+        Task task = new Task(sharedVar);
+
+        /*
+            Constructor receives sharedVar reference.
+
+            Task now stores reference to SAME object.
+
+                        task
+                          |
+                          |
+                          v
+
+                     SharedVar
+                          |
+                          v
+
+                       data=0
+        */
+
+
+        /**********************************************************
+         STEP 5 : CREATE THREAD OBJECTS
+         **********************************************************/
+
+        Thread t1 = new Thread(task);
+        Thread t2 = new Thread(task);
+        Thread t3 = new Thread(task);
+        Thread t4 = new Thread(task);
+
+        /*
+            Four thread objects are created.
+
+            IMPORTANT:
+
+            All four threads receive SAME task object.
+
+
+                            task
+                              ^
+                              |
+                ----------------------------
+                |      |      |          |
+                |      |      |          |
+               t1     t2     t3         t4
+
+            All threads share the same task.
+        */
+
+
+        /**********************************************************
+         STEP 6 : START THREADS
+         **********************************************************/
+
+        t1.start();
+        t2.start();
+        t3.start();
+        t4.start();
+
+        /*
+            start() does NOT call run() directly.
+
+            JVM asks Operating System to create
+            new execution paths.
+
+            Conceptually:
+
+                t1.start()
+                    |
+                    v
+                task.run()
+
+            Same for t2,t3,t4
+        */
+
+
+        /**********************************************************
+         STEP 7 : THREAD EXECUTION
+         **********************************************************/
+
+        /*
+            Thread-1 enters run()
+
+                for(...)
+                    sharedVar.data++
+
+            Thread-2 enters run()
+
+                for(...)
+                    sharedVar.data++
+
+            Thread-3 enters run()
+
+                for(...)
+                    sharedVar.data++
+
+            Thread-4 enters run()
+
+                for(...)
+                    sharedVar.data++
+
+
+            All threads modify SAME variable.
+        */
+
+
+        /**********************************************************
+         STEP 8 : WAIT FOR THREADS
+         **********************************************************/
+
+        try{
+
+            t1.join();
+            t2.join();
+            t3.join();
+            t4.join();
+
+        }catch(Exception e){
+
+        }
+
+        /*
+            join() means:
+
+            Main thread waits until worker thread finishes.
+
+            Without join():
+
+                System.out.println(sharedVar.data);
+
+            may execute before threads finish.
+        */
+
+
+        /**********************************************************
+         STEP 9 : EXPECTED RESULT
+         **********************************************************/
+
+        System.out.println(40000);
+
+        /*
+            Why 40000 ?
+
+            Thread-1 -> 10000 increments
+            Thread-2 -> 10000 increments
+            Thread-3 -> 10000 increments
+            Thread-4 -> 10000 increments
+
+            Total:
+
+                10000 * 4
+
+                = 40000
+        */
+
+
+        /**********************************************************
+         STEP 10 : ACTUAL RESULT
+         **********************************************************/
+
+//      System.out.println(task.getData());
+
+        System.out.println(sharedVar.data);
+
+        /*
+            Prints actual value stored inside object.
+
+            If no increments are lost:
+
+                40000
+
+            If race condition occurs:
+
+                39985
+                39872
+                39912
+
+            etc.
+
+            Because:
+
+                data++
+
+            is not atomic.
+
+            Internally it is roughly:
+
+                Read data
+                Add 1
+                Write data
+
+            Multiple threads can interfere.
+        */
+    }
+}
